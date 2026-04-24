@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment 6 – Nginx & WordPress Compose</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 60%, #d9e9fa 100%); font-family: 'Inter', sans-serif; color: #1a1a2e; line-height: 1.7; min-height: 100vh; }
+        .container { max-width: 900px; margin: 2rem auto; background: rgba(255,255,255,0.8); backdrop-filter: blur(15px); border-radius: 24px; padding: 3rem 2.5rem; box-shadow: 0 25px 50px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
+        h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #0d47a1, #1565c0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 2rem; border-bottom: 2px solid #2196f3; padding-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; color: #0d47a1; margin-top: 2rem; margin-bottom: 0.75rem; }
+        h3 { font-size: 1.2rem; color: #1565c0; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        p { margin-bottom: 1rem; color: #2c3e50; }
+        code { background: #e3f2fd; color: #0d47a1; padding: 0.2em 0.4em; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 0.9em; }
+        pre { background: #1a1a2e; color: #c9d1d9; padding: 1.5rem; border-radius: 12px; overflow-x: auto; margin: 1.5rem 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        pre code { background: transparent; color: inherit; padding: 0; }
+        img { max-width: 100%; border-radius: 12px; margin: 1rem 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.3rem; }
+        a { color: #0d47a1; text-decoration: none; font-weight: 500; }
+        a:hover { text-decoration: underline; }
+        .back-link { display: inline-block; margin-top: 2rem; padding: 0.5rem 1.2rem; background: #e3f2fd; border-radius: 20px; color: #0d47a1; text-decoration: none; font-weight: 600; transition: background 0.2s; }
+        .back-link:hover { background: #bbdefb; }
+    </style>
+</head>
+<body>
+    <div class="container" id="content"></div>
+    <div class="container" style="text-align:center; margin-top:0; padding-top:1rem;">
+        <a href="../../index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script type="text/markdown" id="markdown-content">
+# Docker Lab – Experiment 6: Nginx Container & WordPress with Docker Compose
+
+### Aim
+To run a custom Nginx container and later a full WordPress stack using Docker Compose.
+
+**Pre‑requisite**
+- Docker & Docker Compose installed
+- GitHub account (for source code)
+- Docker Hub account (for image registry)
+
+**Project Directory Structure**  
+![Directory Structure](./Images/image.png)
+
+### Step‑by‑Step Procedure
+
+**Step 1 – Verify Docker and Docker Compose installation**  
+```powershell
+docker --version
+docker compose version
+```
+![Docker version check](./Images/1.png)
+
+**Step 2 – First attempt to run a container (Docker daemon not running)**  
+```powershell
+docker run -d --name lab-nginx -p 8081:80 -v ${PWD}/html:/usr/share/nginx/html nginx:alpine
+```
+![Daemon connection error](./Images/1.png)
+
+**Step 3 – Start Docker Desktop and run the Nginx container**  
+```powershell
+docker run -d --name lab-nginx -p 8081:80 -v ${PWD}/html:/usr/share/nginx/html nginx:alpine
+```
+![Successful container start](./Images/2.png)
+
+**Step 4 – Inspect running containers**  
+```powershell
+docker ps
+```
+![docker ps output](./Images/4.png)
+
+**Step 5 – Edit the default web page**  
+```powershell
+notepad html\index.html
+```
+![Notepad command](./Images/4.png)
+
+**Step 6 – Write a Docker Compose file for Nginx (first attempt)**  
+```yaml
+version: '3.8'
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: lab-nginx-compose
+    ports:
+      - "8081:80"
+    volumes:
+      - ./html:/usr/share/nginx/html
+```
+*PowerShell errors appear in the screenshots*
+
+![Typing YAML in PowerShell leads to errors](./Images/5.png)
+![More parsing errors](./Images/6.png)
+
+**Step 7 – Create the Compose file correctly with a text editor**  
+```powershell
+notepad docker-compose.yml
+```
+![docker-compose.yml in Notepad](./Images/5.png)
+![Saved YAML file](./Images/7.png)
+
+**Step 8 – Attempt to start the Nginx service with Compose**  
+```powershell
+docker compose up -d
+```
+![Port conflict error](./Images/6.png)
+
+**Step 9 – Remove the conflicting container and restart the Compose stack**  
+```powershell
+docker rm -f lab-nginx
+docker compose up -d
+```
+![Compose up after removing conflict](./Images/8.png)
+
+**Step 10 – Verify the Compose services**  
+```powershell
+docker compose ps
+```
+![Compose ps output showing lab-nginx-compose](./Images/8.png)
+
+**Step 11 – Prepare the WordPress project**  
+```powershell
+mkdir wp-compose
+cd wp-compose
+notepad docker-compose.yml
+```
+![Directory creation and Notepad](./Images/9.png)
+
+**Step 12 – Define the WordPress and MySQL services**  
+```yaml
+services:
+  db:
+    image: mysql:5.7
+    container_name: wordpress_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wpuser
+      MYSQL_PASSWORD: wppass
+    volumes:
+      - db_data:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:latest
+    container_name: wordpress_app
+    depends_on:
+      - db
+    ports:
+      - "8082:80"
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: wppass
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+
+volumes:
+  db_data:
+  wp_data:
+```
+![WordPress Compose file content](./Images/10.png)
+
+**Step 13 – Pull images and launch the WordPress stack**  
+```powershell
+docker compose up -d
+```
+![Images being pulled](./Images/11.png)
+![All containers up](./Images/12.png)
+
+**Step 14 – Confirm the WordPress stack is running**  
+```powershell
+docker compose ps
+```
+![Running WordPress containers](./Images/12.png)
+
+**Step 15 – Access the WordPress installation wizard**  
+Open a browser and navigate to `http://localhost:8082`.  
+![WordPress language selection](./Images/13.png)
+
+### ✅ Result
+Successfully deployed a custom Nginx container and a full WordPress stack using Docker Compose.
+    </script>
+
+    <script>
+        const raw = document.getElementById('markdown-content').textContent;
+        document.getElementById('content').innerHTML = marked.parse(raw);
+        document.title = document.querySelector('h1')?.textContent || 'Experiment 6';
+    </script>
+</body>
+</html>

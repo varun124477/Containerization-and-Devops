@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: lab-nginx-compose
+    ports:
+      - "9090:8080"
+    volumes:
+      - ./html:/usr/share/nginx/html

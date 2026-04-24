@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment 9 – Ansible</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 60%, #d9e9fa 100%); font-family: 'Inter', sans-serif; color: #1a1a2e; line-height: 1.7; min-height: 100vh; }
+        .container { max-width: 900px; margin: 2rem auto; background: rgba(255,255,255,0.8); backdrop-filter: blur(15px); border-radius: 24px; padding: 3rem 2.5rem; box-shadow: 0 25px 50px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
+        h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #0d47a1, #1565c0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 2rem; border-bottom: 2px solid #2196f3; padding-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; color: #0d47a1; margin-top: 2rem; margin-bottom: 0.75rem; }
+        h3 { font-size: 1.2rem; color: #1565c0; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        p { margin-bottom: 1rem; color: #2c3e50; }
+        code { background: #e3f2fd; color: #0d47a1; padding: 0.2em 0.4em; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 0.9em; }
+        pre { background: #1a1a2e; color: #c9d1d9; padding: 1.5rem; border-radius: 12px; overflow-x: auto; margin: 1.5rem 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        pre code { background: transparent; color: inherit; padding: 0; }
+        img { max-width: 100%; border-radius: 12px; margin: 1rem 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.3rem; }
+        a { color: #0d47a1; text-decoration: none; font-weight: 500; }
+        a:hover { text-decoration: underline; }
+        .back-link { display: inline-block; margin-top: 2rem; padding: 0.5rem 1.2rem; background: #e3f2fd; border-radius: 20px; color: #0d47a1; text-decoration: none; font-weight: 600; transition: background 0.2s; }
+        .back-link:hover { background: #bbdefb; }
+    </style>
+</head>
+<body>
+    <div class="container" id="content"></div>
+    <div class="container" style="text-align:center; margin-top:0; padding-top:1rem;">
+        <a href="../../index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script type="text/markdown" id="markdown-content">
+# Lab Experiment 9: Ansible – Configuration Management with Docker Containers
+
+### Aim
+To demonstrate infrastructure automation using Ansible. A control node (WSL Ubuntu) manages four Docker-based Ubuntu server containers without installing any agents, using SSH and YAML playbooks.
+
+**Pre‑requisite**
+- Ubuntu environment (WSL) on Windows
+- Docker installed and running
+
+![Directory Structure](./Images/image.png)
+
+### Step‑by‑Step Procedure
+
+**Step 1 – Install Ansible via `apt`**  
+```bash
+sudo apt update -y
+sudo apt install ansible -y
+```
+![apt update and install ansible](./Images/1.png)
+![Package installation progress](./Images/2.png)
+
+**Step 2 – Verify Ansible Installation**  
+```bash
+ansible --version
+ansible localhost -m ping
+```
+![Ansible version and localhost ping](./Images/3.png)
+
+**Step 3 – Generate an SSH Key Pair**  
+```bash
+rm -rf ~/.ssh
+mkdir ~/.ssh
+chmod 700 ~/.ssh
+ssh-keygen -t rsa -b 4096
+```
+![ssh-keygen generation](./Images/4.png)
+![Keys created and fingerprint displayed](./Images/5.png)
+
+**Step 4 – Copy Keys to Working Directory and Verify Docker**  
+```bash
+cp ~/.ssh/id_rsa .
+cp ~/.ssh/id_rsa.pub .
+docker --version
+```
+![Copy keys and check Docker](./Images/6.png)
+
+**Step 5 – Create a Dockerfile for an SSH‑enabled Ubuntu Image**  
+```dockerfile
+FROM ubuntu
+RUN apt update -y
+RUN apt install -y python3 python3-pip openssh-server
+RUN mkdir -p /var/run/sshd
+RUN mkdir -p /run/sshd && \
+    echo 'root:password' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
+COPY id_rsa /root/.ssh/id_rsa
+COPY id_rsa.pub /root/.ssh/authorized_keys
+RUN chmod 600 /root/.ssh/id_rsa && chmod 644 /root/.ssh/authorized_keys
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D"]
+```
+![Dockerfile content in nano](./Images/7.png)
+
+**Step 6 – Build the Docker Image**  
+```bash
+docker build -t ubuntu-server .
+```
+![docker build output](./Images/8.png)
+
+**Step 7 – Run Four Server Containers**  
+```bash
+for i in {1..4}; do
+    docker run -d -p 220${i}:22 --name server${i} ubuntu-server
+done
+```
+![Docker run loop](./Images/9.png)
+
+**Step 8 – Verify Running Containers**  
+```bash
+docker ps
+```
+![docker ps showing four containers](./Images/10.png)
+
+**Step 9 – Test Password‑Based SSH Login**  
+```bash
+ssh root@localhost -p 2201
+```
+![Password SSH login test](./Images/11.png)
+
+**Step 10 – Create the Ansible Inventory File**  
+```ini
+[servers]
+server1 ansible_host=localhost ansible_port=2201
+server2 ansible_host=localhost ansible_port=2202
+server3 ansible_host=localhost ansible_port=2203
+server4 ansible_host=localhost ansible_port=2204
+[servers:vars]
+ansible_user=root
+ansible_ssh_private_key_file=~/.ssh/id_rsa
+ansible_python_interpreter=/usr/bin/python3
+```
+![inventory.ini in nano](./Images/12.png)
+
+**Step 11 – Test Key‑Based SSH Authentication**  
+```bash
+ssh -i ~/.ssh/id_rsa root@localhost -p 2201
+```
+![Key-based SSH login test](./Images/13.png)
+
+**Step 12 – Run Ansible Ping Test**  
+```bash
+ansible all -i inventory.ini -m ping
+```
+![Ansible ping test – host key verification and success](./Images/14.png)
+![Ansible ping output for all servers](./Images/16.png)
+
+**Step 13 – Write an Ansible Playbook**  
+```yaml
+---
+- name: Configure servers
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+    - name: Install required packages
+      apt:
+        name:
+          - vim
+          - htop
+          - wget
+        state: present
+    - name: Create test file
+      copy:
+        dest: /root/ansible_test.txt
+        content: "Configured by Ansible on {{ inventory_hostname }}"
+```
+![playbook.yml in nano](./Images/15.png)
+
+**Step 14 – Execute the Playbook**  
+```bash
+ansible-playbook -i inventory.ini playbook.yml
+```
+**Step 15 – Verify the Configuration**  
+```bash
+ansible all -i inventory.ini -m command -a "cat /root/ansible_test.txt"
+```
+![Test file content on all servers](./Images/18.png)
+
+**Step 16 – Clean Up (Optional)**  
+```bash
+for i in {1..4}; do docker rm -f server${i}; done
+```
+    </script>
+
+    <script>
+        const raw = document.getElementById('markdown-content').textContent;
+        document.getElementById('content').innerHTML = marked.parse(raw);
+        document.title = document.querySelector('h1')?.textContent || 'Experiment 9';
+    </script>
+</body>
+</html>

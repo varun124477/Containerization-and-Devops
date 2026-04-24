@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment 5 – Volumes, Environment, Monitoring & Networks</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 60%, #d9e9fa 100%); font-family: 'Inter', sans-serif; color: #1a1a2e; line-height: 1.7; min-height: 100vh; }
+        .container { max-width: 900px; margin: 2rem auto; background: rgba(255,255,255,0.8); backdrop-filter: blur(15px); border-radius: 24px; padding: 3rem 2.5rem; box-shadow: 0 25px 50px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
+        h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #0d47a1, #1565c0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 2rem; border-bottom: 2px solid #2196f3; padding-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; color: #0d47a1; margin-top: 2rem; margin-bottom: 0.75rem; }
+        h3 { font-size: 1.2rem; color: #1565c0; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        p { margin-bottom: 1rem; color: #2c3e50; }
+        code { background: #e3f2fd; color: #0d47a1; padding: 0.2em 0.4em; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 0.9em; }
+        pre { background: #1a1a2e; color: #c9d1d9; padding: 1.5rem; border-radius: 12px; overflow-x: auto; margin: 1.5rem 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        pre code { background: transparent; color: inherit; padding: 0; }
+        img { max-width: 100%; border-radius: 12px; margin: 1rem 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.3rem; }
+        a { color: #0d47a1; text-decoration: none; font-weight: 500; }
+        a:hover { text-decoration: underline; }
+        .back-link { display: inline-block; margin-top: 2rem; padding: 0.5rem 1.2rem; background: #e3f2fd; border-radius: 20px; color: #0d47a1; text-decoration: none; font-weight: 600; transition: background 0.2s; }
+        .back-link:hover { background: #bbdefb; }
+    </style>
+</head>
+<body>
+    <div class="container" id="content"></div>
+    <div class="container" style="text-align:center; margin-top:0; padding-top:1rem;">
+        <a href="../../index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script type="text/markdown" id="markdown-content">
+# Experiment 5: Docker Volumes, Environment Variables, Monitoring & Networks
+
+### Aim
+To master Docker volumes for persistent data, configure containers with environment variables, monitor resource usage and logs, and set up custom bridge networks.
+
+**Pre‑requisites**
+- Docker installed (WSL / Ubuntu)
+- Basic Linux command line
+
+![Experiment directory](./Images/image.png)
+
+### Part 1 – Docker Volumes
+
+**Step 1.1 – Ephemeral Data**  
+```bash
+docker run -it --name test-container ubuntu /bin/bash
+mkdir /data
+echo "Hello World" > /data/message.txt
+exit
+docker start test-container
+docker exec test-container cat /data/message.txt   # File present
+docker rm -f test-container
+docker run -it --name test-container ubuntu /bin/bash
+cat /data/message.txt   # "No such file or directory" – data lost
+```
+![Data persistence demo and conflict](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer%2027-02-2026%2000_22_33.png)
+
+**Step 1.2 – Named Volumes**  
+```bash
+docker volume create mydata
+docker run -it --name volume-test -v mydata:/data ubuntu /bin/bash
+echo "Persistent Data" > /data/test.txt
+exit
+docker rm volume-test
+docker run -it --name volume-test2 -v mydata:/data ubuntu /bin/bash
+cat /data/test.txt    # "Persistent Data"
+exit
+```
+![Volume creation and persistent data test](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer%2027-02-2026%2000_22_55.png)
+
+**Step 1.3 – Bind Mounts**  
+```bash
+mkdir ~/myapp-data
+docker run -d --name web3 -v ~/myapp-data:/app/data nginx
+echo "From Host - Varun Experiment 5" > ~/myapp-data/host-file.txt
+docker exec web3 cat /app/data/host-file.txt
+docker exec web3 sh -c "echo 'From Container Side' > /app/data/container-file.txt"
+cat ~/myapp-data/container-file.txt
+```
+![Bind mount bidirectional sync](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2027-02-2026%2000_28_20.png)
+
+### Part 2 – Environment Variables
+
+**Step 2.1 – Passing Variables at Runtime**  
+```python
+import os
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/config')
+def config():
+    return {
+        'database_host': os.environ.get('DATABASE_HOST', 'localhost'),
+        'debug': os.environ.get('DEBUG', 'false'),
+        'has_api_key': bool(os.environ.get('API_KEY'))
+    }
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG') == 'true')
+```
+```bash
+docker build --no-cache -t flask-app .
+docker run -d -p 5000:5000 -e DATABASE_HOST="prod-db.example.com" -e DEBUG="true" -e API_KEY="secret123" flask-app
+```
+![Adding env vars and resolving port conflict](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2027-02-2026%2000_28_58.png)
+
+**Step 2.2 – Test /config Endpoint**  
+![Config endpoint JSON response](./Images/localhost_5000_config%20-%20Google%20Chrome%2027-02-2026%2000_34_57.png)
+
+### Part 3 – Docker Monitoring
+
+**Step 3.1 – docker stats**  
+```bash
+docker stats --no-stream
+```
+![docker stats output](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2027-02-2026%2000_35_58.png)
+
+**Step 3.2 – docker logs**  
+```bash
+docker logs flask-app
+```
+![Flask container logs](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2027-02-2026%2000_36_17.png)
+
+**Step 3.3 – docker inspect**  
+```bash
+docker inspect flask-app | grep -A 10 "NetworkSettings"
+docker inspect --format='{{.State.Status}}' flask-app
+docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' flask-app
+```
+![docker inspect details](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2027-02-2026%2000_36_48.png)
+
+### Part 4 – Docker Networks
+
+**Step 4.1 – Create Custom Network**  
+```bash
+docker network create my-network
+docker network inspect my-network
+```
+![Network creation and inspection](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2027-02-2026%2000_37_47.png)
+
+**Step 4.2 – Run Containers on Custom Network**  
+```bash
+docker run -d --name web1 --network my-network nginx
+docker run -d --name web2 --network my-network nginx
+docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' web2
+```
+![Network inspection with containers attached](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2027-02-2026%2000_39_39.png)
+
+**Step 4.3 – Test Cross‑Container Communication**  
+```bash
+docker run -it --network my-network ubuntu /bin/bash
+apt update && apt install iputils-ping -y
+ping web2
+```
+![Successful ping between containers](./Images/root@7976b8ae7c10_%20_%2027-02-2026%2000_41_59.png)
+
+### ✅ Key Takeaways
+- Volumes and bind mounts keep data alive.
+- Environment variables make containers configurable.
+- Monitoring commands help diagnose performance and logs.
+- Custom networks allow containers to communicate by name.
+    </script>
+
+    <script>
+        const raw = document.getElementById('markdown-content').textContent;
+        document.getElementById('content').innerHTML = marked.parse(raw);
+        document.title = document.querySelector('h1')?.textContent || 'Experiment 5';
+    </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment 4 – Docker Essentials</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 60%, #d9e9fa 100%); font-family: 'Inter', sans-serif; color: #1a1a2e; line-height: 1.7; min-height: 100vh; }
+        .container { max-width: 900px; margin: 2rem auto; background: rgba(255,255,255,0.8); backdrop-filter: blur(15px); border-radius: 24px; padding: 3rem 2.5rem; box-shadow: 0 25px 50px rgba(0,0,0,0.05); border: 1px solid rgba(255,255,255,0.5); }
+        h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #0d47a1, #1565c0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 2rem; border-bottom: 2px solid #2196f3; padding-bottom: 0.5rem; }
+        h2 { font-size: 1.5rem; color: #0d47a1; margin-top: 2rem; margin-bottom: 0.75rem; }
+        h3 { font-size: 1.2rem; color: #1565c0; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        p { margin-bottom: 1rem; color: #2c3e50; }
+        code { background: #e3f2fd; color: #0d47a1; padding: 0.2em 0.4em; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 0.9em; }
+        pre { background: #1a1a2e; color: #c9d1d9; padding: 1.5rem; border-radius: 12px; overflow-x: auto; margin: 1.5rem 0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
+        pre code { background: transparent; color: inherit; padding: 0; }
+        img { max-width: 100%; border-radius: 12px; margin: 1rem 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.3rem; }
+        a { color: #0d47a1; text-decoration: none; font-weight: 500; }
+        a:hover { text-decoration: underline; }
+        .back-link { display: inline-block; margin-top: 2rem; padding: 0.5rem 1.2rem; background: #e3f2fd; border-radius: 20px; color: #0d47a1; text-decoration: none; font-weight: 600; transition: background 0.2s; }
+        .back-link:hover { background: #bbdefb; }
+    </style>
+</head>
+<body>
+    <div class="container" id="content"></div>
+    <div class="container" style="text-align:center; margin-top:0; padding-top:1rem;">
+        <a href="../../index.html" class="back-link">← Back to Home</a>
+    </div>
+
+    <script type="text/markdown" id="markdown-content">
+# Lab Experiment 4: Docker Essentials – Dockerfile, .dockerignore, Tagging & Publishing
+
+### Aim
+To containerise a Python Flask application, understand Dockerfile instructions, `.dockerignore`, image tagging, layer caching, multi‑stage builds, and publishing to Docker Hub.
+
+**Pre‑requisites**
+- Docker installed (used via WSL/Ubuntu)
+- Python/Flask basics
+
+![Folder structure](./Images/image.png)
+
+### Step‑by‑Step Procedure
+
+**Step 1 – Create the project folder**  
+```bash
+mkdir my-flask-app
+cd my-flask-app
+```
+![Creating directory](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer_my-flask-app%2021-02-2026%2014_31_02.png)
+
+**Step 2 – Write the Flask application (`app.py`)**  
+```python
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return "Hello from Docker!"
+
+@app.route('/health')
+def health():
+    return "OK"
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
+```
+![app.py in editor](./Images/Welcome%20-%20lab%20-%20Visual%20Studio%20Code%2021-02-2026%2014_32_58.png)
+
+**Step 3 – Create the Dockerfile**  
+```dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py .
+EXPOSE 5000
+CMD ["python", "app.py"]
+```
+![Dockerfile content](./Images/Welcome%20-%20lab%20-%20Visual%20Studio%20Code%2021-02-2026%2014_32_55.png)
+
+**Step 4 – Create `.dockerignore`**  
+```
+__pycache__/
+*.pyc
+.env
+.venv
+...
+```
+![.dockerignore content](./Images/requirements.txt%20-%20lab%20-%20Visual%20Studio%20Code%2021-02-2026%2014_33_37.png)
+
+**Step 5 – First build attempt (credential error)**  
+```bash
+docker build -t my-flask-app .
+```
+![Build error](./Images/Screenshot%2021-02-2026%2015_05_07.png)
+
+**Step 6 – Fix credential issue**  
+```bash
+rm -rf ~/.docker
+exit
+wsl --shutdown
+wsl
+cd /mnt/c/Users/acer/my-flask-app
+```
+![Removing config](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2021-02-2026%2015_15_35.png)
+![Restarting WSL](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer_my-flask-app%2021-02-2026%2015_15_22.png)
+
+**Step 7 – Rebuild successfully**  
+```bash
+docker build --no-cache -t my-flask-app .
+docker images
+```
+![Rebuilding after fix](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer_my-flask-app%2021-02-2026%2015_17_31.png)
+![Build finished](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer_my-flask-app%2021-02-2026%2015_17_57.png)
+![Image list](./Images/Docker%20Permission%20Issue%20-%20Google%20Chrome%2021-02-2026%2015_18_31.png)
+
+**Step 8 – Run the container and test**  
+```bash
+docker run -d -p 5000:5000 --name flask-container my-flask-app
+```
+Open `http://localhost:5000` – you should see **“Hello from Docker!”**.
+![Browser output](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer_my-flask-app%2021-02-2026%2015_18_49.png)
+
+**Step 9 – Code change and rebuild (layer caching)**  
+Edit `app.py`, then rebuild.
+```bash
+nano app.py
+docker build -t my-flask-app .
+docker rm -f flask-container
+docker run -d -p 5000:5000 --name flask-container my-flask-app
+```
+![Rebuild with cache](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer_my-flask-app%2021-02-2026%2015_24_33.png)
+![Running new container](./Images/acer@DESKTOP-DOEGC13_%20_mnt_c_Users_acer_my-flask-app%2021-02-2026%2015_24_35.png)
+
+**Step 10 – Tagging for versioning**  
+```bash
+docker tag my-flask-app:latest username/my-flask-app:1.0
+docker tag my-flask-app:latest username/my-flask-app:latest
+```
+**Step 11 – Publish to Docker Hub**  
+```bash
+docker login
+docker push username/my-flask-app:1.0
+docker push username/my-flask-app:latest
+```
+**Step 12 – Multi‑stage build (optional)**  
+```dockerfile
+# STAGE 1: Builder
+FROM python:3.9-slim AS builder
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --user -r requirements.txt
+
+# STAGE 2: Runtime
+FROM python:3.9-slim
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY app.py .
+ENV PATH=/root/.local/bin:$PATH
+EXPOSE 5000
+CMD ["python", "app.py"]
+```
+Build and compare sizes:
+```bash
+docker build -f Dockerfile.multistage -t my-flask-app:multistage .
+docker images | grep my-flask-app
+```
+
+### ✅ Result
+A complete Flask application was containerised. The Docker credential issue was resolved, the image was built and run successfully, layer caching was observed, and the concepts of tagging and multi‑stage builds were understood.
+    </script>
+
+    <script>
+        const raw = document.getElementById('markdown-content').textContent;
+        document.getElementById('content').innerHTML = marked.parse(raw);
+        document.title = document.querySelector('h1')?.textContent || 'Experiment 4';
+    </script>
+</body>
+</html>
