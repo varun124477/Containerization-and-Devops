@@ -1,0 +1,219 @@
+Below is the complete **Experiment‑11** documentation. Place these two files in your `lab/Experiment-11/` folder.
+
+---
+
+### 📄 `lab/Experiment-11/README.md`
+
+```markdown
+# Experiment 11: Orchestration using Docker Compose & Docker Swarm
+
+## Aim
+To transition from Docker Compose to Docker Swarm, deploying the WordPress + MySQL stack as a Swarm stack, scaling services automatically, and observing self‑healing behaviour.
+
+## Pre‑requisites
+- Docker with Swarm mode enabled (comes with Docker Desktop)
+- The `docker-compose.yml` from Experiment 6 (WordPress + MySQL)
+- All previous experiment containers stopped (`docker compose down -v`)
+
+---
+
+## Step‑by‑Step Procedure
+
+**Step 1 – Check Current State (No Swarm)**  
+Stop any existing Compose services and verify nothing is running.
+
+```bash
+docker compose down -v
+docker ps
+```
+*Expected: empty list or only unrelated containers.*
+
+![clean state](./Images/1.png)
+
+---
+
+**Step 2 – Initialize Docker Swarm**  
+Turn the current Docker engine into a single‑node Swarm manager.
+
+```bash
+docker swarm init
+```
+*Output: “Swarm initialized: current node … is now a manager.”*
+
+![swarm init](./Images/2.png)
+
+---
+
+**Step 3 – Verify Swarm is Active**  
+List the Swarm nodes.
+
+```bash
+docker node ls
+```
+*You should see one node with status **Ready** and availability **Active**.*
+
+![node list](./Images/3.png)
+
+---
+
+**Step 4 – Deploy the WordPress Stack to Swarm**  
+Use the same Compose file to deploy a **stack** (group of services managed by Swarm).
+
+```bash
+docker stack deploy -c docker-compose.yml wpstack
+```
+*Expected output: Creating network wpstack_default, Creating service wpstack_db, Creating service wpstack_wordpress.*
+
+![stack deploy](./Images/4.png)
+
+---
+
+**Step 5 – List the Services**  
+Services are Swarm’s higher‑level objects that manage containers.
+
+```bash
+docker service ls
+```
+*You will see `wpstack_db` (1/1) and `wpstack_wordpress` (1/1).*
+
+![service list](./Images/5.png)
+
+---
+
+**Step 6 – See Individual Tasks (Containers) for a Service**  
+
+```bash
+docker service ps wpstack_wordpress
+```
+*Shows the actual container name, node, and current state.*
+
+![service tasks](./Images/6.png)
+
+---
+
+**Step 7 – Check Running Containers**  
+Swarm‑managed containers have names like `wpstack_wordpress.1.xxxxx`.
+
+```bash
+docker ps
+```
+![containers after swarm deploy](./Images/7.png)
+
+---
+
+**Step 8 – Access WordPress**  
+Open `http://localhost:8080` – the WordPress setup screen appears, exactly as in Experiment 6.
+
+![wordpress page](./Images/8.png)
+
+---
+
+**Step 9 – Scale the WordPress Service**  
+Scale from 1 replica to 3 replicas with a single command.
+
+```bash
+docker service scale wpstack_wordpress=3
+```
+*Output: wpstack_wordpress scaled to 3, overall progress: 3 out of 3 tasks.*
+
+![scale service](./Images/9.png)
+
+---
+
+**Step 10 – Verify Scaling**  
+
+```bash
+docker service ls
+docker service ps wpstack_wordpress
+```
+*The REPLICAS column shows 3/3; three separate tasks are now running.*
+
+![scaled service tasks](./Images/10.png)
+
+---
+
+**Step 11 – Load Balancing in Action**  
+Even though there are three containers, you still access the application on `http://localhost:8080`. Swarm’s internal load balancer distributes requests across all replicas.
+
+![same port multiple replicas](./Images/11.png)
+
+---
+
+**Step 12 – Test Self‑Healing (Kill a Container)**  
+
+1. Find a WordPress container ID:  
+   ```bash
+   docker ps | grep wordpress
+   ```
+2. Kill it:  
+   ```bash
+   docker kill <container-id>
+   ```
+3. Watch Swarm automatically replace it:  
+   ```bash
+   docker service ps wpstack_wordpress
+   ```
+*The killed container shows `Shutdown` / `Failed`, and a new one is created to maintain the desired 3 replicas.*
+
+![kill container and self-heal](./Images/12.png)
+
+---
+
+**Step 13 – Confirm Self‑Healing**  
+
+```bash
+docker ps | grep wordpress
+```
+*Three containers are still running – Swarm healed the service automatically.*
+
+![recovery complete](./Images/13.png)
+
+---
+
+**Step 14 – Remove the Stack**  
+
+```bash
+docker stack rm wpstack
+```
+*This removes the services and network. Volumes remain unless deleted separately.*
+
+![stack removed](./Images/14.png)
+
+---
+
+**Step 15 – Verify Cleanup**  
+
+```bash
+docker service ls
+docker ps
+```
+*No services, no WordPress/MySQL containers.*
+
+![clean after stack remove](./Images/15.png)
+
+---
+
+## Key Concepts
+
+| Feature          | Docker Compose                  | Docker Swarm                         |
+|------------------|---------------------------------|--------------------------------------|
+| Scope            | Single host                     | Multi‑node cluster                   |
+| Scaling          | `--scale` flag, no balancing    | `docker service scale` with built‑in load balancer |
+| Self‑healing     | Manual restart required         | Automatic container replacement      |
+| Service Discovery| Container names                 | DNS + virtual IP                     |
+
+## Observations
+- The **same** `docker-compose.yml` was used for both Compose and Swarm.
+- Swarm replaces direct container management with **services**.
+- Scaling a service did **not** cause port conflicts – Swarm’s load balancer handles it.
+- Killing a container triggered automatic recreation – no manual intervention needed.
+
+## Cleanup (Optional)
+```bash
+docker swarm leave --force   # if you want to exit Swarm mode
+docker volume prune           # to remove unused volumes
+```
+```
+
+---
+
